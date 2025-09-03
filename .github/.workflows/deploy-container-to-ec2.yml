@@ -1,0 +1,39 @@
+name: Reusable Deploy Workflow
+
+on:
+  workflow_call:
+    inputs:
+      docker_compose_path:
+        description: "Ruta del docker-compose.yml en el repo"
+        required: true
+        type: string
+      service_path:
+        description: "Ruta en el servidor remoto donde se guardará docker-compose"
+        required: true
+        type: string
+    secrets:
+      EC2_HOST:
+        required: true
+      EC2_USER:
+        required: true
+      EC2_SSH_KEY:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd ${{ inputs.service_path }}
+            docker compose pull
+            docker compose up -d

@@ -1,0 +1,54 @@
+# .github/workflows/build-and-push.yml
+name: Build & Push Docker Image
+
+on:
+  workflow_call:
+    inputs:
+      image_name:
+        description: "Nombre de la imagen en Docker Hub (ej: erwinnm/relv-api)"
+        required: true
+        type: string
+      dockerfile:
+        description: "Ruta al Dockerfile (ej: ./Dockerfile)"
+        required: false
+        default: ./Dockerfile
+        type: string
+      context:
+        description: "Directorio de build (ej: ./)"
+        required: false
+        default: .
+        type: string
+      branch:
+        description: "Rama desde la que se permite ejecutar el build"
+        required: false
+        default: main
+        type: string
+
+jobs:
+  build:
+    if: github.ref == format('refs/heads/{0}', inputs.branch)
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ${{ inputs.image_name }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_ACCESS_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          SHA_TAG=${GITHUB_SHA::7}
+
+          docker build -t $IMAGE_NAME:$SHA_TAG \
+            -f ${{ inputs.dockerfile }} \
+            ${{ inputs.context }}
+
+          docker tag $IMAGE_NAME:$SHA_TAG $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:$SHA_TAG
+          docker push $IMAGE_NAME:latest
